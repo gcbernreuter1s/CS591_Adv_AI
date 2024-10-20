@@ -1,1 +1,110 @@
 
+import heapq
+
+class Node:
+    def __init__(self, state, parent=None, g=0, h=0):
+        self.state = state
+        self.parent = parent
+        self.g = g  # path cost from start node to current node
+        self.h = h  # heuristic value (Manhattan distance to closest unvisited goal)
+
+    def f(self):
+        return self.g + self.h
+
+    def __lt__(self, other):
+        return self.f() < other.f()
+
+def manhattan_distance(state, goals):
+    # Calculate Manhattan distance to the closest unvisited goal
+    min_distance = float('inf')
+    for goal in goals:
+        distance = abs(state[0] - goal[0]) + abs(state[1] - goal[1])
+        min_distance = min(min_distance, distance)
+    return min_distance
+
+def get_neighbors(state, maze):
+    neighbors = []
+    for action in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+        new_state = (state[0] + action[0], state[1] + action[1])
+        if 0 <= new_state[0] < len(maze) and 0 <= new_state[1] < len(maze[0]) and maze[new_state[0]][new_state[1]] != '%':
+            neighbors.append(new_state)
+    return neighbors
+
+def astar_search(start, goals, maze):
+    open_set = []
+    heapq.heappush(open_set, Node(start, None, 0, manhattan_distance(start, goals)))
+
+    visited = set()
+    expanded_nodes = 0
+    max_depth = 0
+    max_fringe_size = 1
+
+    while open_set:
+        current = heapq.heappop(open_set)
+        if current.state in goals:
+            goals.remove(current.state)
+            if not goals:  # All goals reached
+                path = []
+                while current:
+                    path.append(current.state)
+                    current = current.parent
+                path.reverse()
+                return path, expanded_nodes, max_depth, max_fringe_size
+
+        if current.state not in visited:
+            visited.add(current.state)
+            for neighbor in get_neighbors(current.state, maze):
+                g = current.g + 1
+                h = manhattan_distance(neighbor, goals)
+                new_node = Node(neighbor, current, g, h)
+                heapq.heappush(open_set, new_node)
+                max_fringe_size = max(max_fringe_size, len(open_set))
+            expanded_nodes += 1
+            max_depth = max(max_depth, current.g)
+
+    return None, None, None, None
+
+def visualize_solution(maze, path):
+    for i in range(len(maze)):
+        for j in range(len(maze[0])):
+            if (i, j) in path:
+                print('.', end=' ')
+            else:
+                print(maze[i][j], end=' ')
+        print()
+
+def solve_maze(maze):
+    goals = []
+    for i in range(len(maze)):
+        for j in range(len(maze[0])):
+            if maze[i][j] == 'P':
+                start = (i, j)
+            elif maze[i][j] == '.':
+                goals.append((i, j))
+    if not goals:
+        print("No goals found")
+        return
+
+    path, expanded_nodes, max_depth, max_fringe_size = astar_search(start, goals, maze)
+    if path:
+        print("Solution:")
+        visualize_solution(maze, path)
+        print("Path cost:", len(path) - 1)
+        print("Number of nodes expanded:", expanded_nodes)
+    else:
+        print("No solution found")
+
+
+def load_maze(filename):
+    maze = []
+    with open(filename, 'r') as f:
+        for line in f:
+            maze.append(line.strip())
+    return maze
+
+# Loop through each maze file and solve the maze
+for maze_file in ['tinySearch.lay','smallSearch.lay','trickySearch.lay']:
+    maze = load_maze(maze_file)
+    print(f"Solving maze from file: {maze_file}")
+    solve_maze(maze)
+    print()
