@@ -1,1 +1,110 @@
+import heapq
 
+class SearchNode:
+    def __init__(self, position, predecessor=None, cost_from_start=0, heuristic_value=0):
+        self.position = position
+        self.predecessor = predecessor
+        self.cost_from_start = cost_from_start  # cost incurred from the start to the current node
+        self.heuristic_value = heuristic_value  # heuristic value (Manhattan distance to closest unvisited goal)
+
+    def total_cost(self):
+        return self.cost_from_start + self.heuristic_value
+
+    def __lt__(self, other):
+        return self.total_cost() < other.total_cost()
+
+def calculate_manhattan_distance(current_position, goal_positions):
+    # Calculate Manhattan distance to the closest unvisited goal
+    min_distance = float('inf')
+    for goal in goal_positions:
+        distance = abs(current_position[0] - goal[0]) + abs(current_position[1] - goal[1])
+        min_distance = min(min_distance, distance)
+    return min_distance
+
+def find_adjacent_positions(current_position, maze_grid):
+    adjacent_positions = []
+    for move in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+        new_position = (current_position[0] + move[0], current_position[1] + move[1])
+        if 0 <= new_position[0] < len(maze_grid) and 0 <= new_position[1] < len(maze_grid[0]) and maze_grid[new_position[0]][new_position[1]] != '%':
+            adjacent_positions.append(new_position)
+    return adjacent_positions
+
+def perform_astar_search(start_position, goal_positions, maze_grid):
+    open_list = []
+    heapq.heappush(open_list, SearchNode(start_position, None, 0, calculate_manhattan_distance(start_position, goal_positions)))
+
+    visited_positions = set()
+    nodes_expanded = 0
+    max_search_depth = 0
+    max_open_list_size = 1
+
+    while open_list:
+        current_node = heapq.heappop(open_list)
+        if current_node.position in goal_positions:
+            goal_positions.remove(current_node.position)
+            if not goal_positions:  # All goals reached
+                path = []
+                while current_node:
+                    path.append(current_node.position)
+                    current_node = current_node.predecessor
+                path.reverse()
+                return path, nodes_expanded, max_search_depth, max_open_list_size
+
+        if current_node.position not in visited_positions:
+            visited_positions.add(current_node.position)
+            for adjacent_position in find_adjacent_positions(current_node.position, maze_grid):
+                cost_from_start = current_node.cost_from_start + 1
+                heuristic_value = calculate_manhattan_distance(adjacent_position, goal_positions)
+                new_node = SearchNode(adjacent_position, current_node, cost_from_start, heuristic_value)
+                heapq.heappush(open_list, new_node)
+                max_open_list_size = max(max_open_list_size, len(open_list))
+            nodes_expanded += 1
+            max_search_depth = max(max_search_depth, current_node.cost_from_start)
+
+    return None, None, None, None
+
+def display_solution(maze_grid, solution_path):
+    for i in range(len(maze_grid)):
+        for j in range(len(maze_grid[0])):
+            if (i, j) in solution_path:
+                print('.', end=' ')
+            else:
+                print(maze_grid[i][j], end=' ')
+        print()
+
+def solve_maze_problem(maze_grid):
+    goal_positions = []
+    for i in range(len(maze_grid)):
+        for j in range(len(maze_grid[0])):
+            if maze_grid[i][j] == 'P':
+                start_position = (i, j)
+            elif maze_grid[i][j] == '.':
+                goal_positions.append((i, j))
+    if not goal_positions:
+        print("No goals found")
+        return
+
+    solution_path, nodes_expanded, max_search_depth, max_open_list_size = perform_astar_search(start_position, goal_positions, maze_grid)
+    if solution_path:
+        print("Solution:")
+        display_solution(maze_grid, solution_path)
+        print("Path cost:", len(solution_path) - 1)
+        print("Number of nodes expanded:", nodes_expanded)
+        print("Max tree depth:", max_search_depth)
+        print("Max fringe size:", max_open_list_size)
+    else:
+        print("No solution found")
+
+def load_maze_from_file(file_name):
+    maze_grid = []
+    with open(file_name, 'r') as file:
+        for line in file:
+            maze_grid.append(line.strip())
+    return maze_grid
+
+# Loop through each maze file and solve the maze
+for maze_file in ['tinySearch.lay', 'smallSearch.lay', 'trickySearch.lay']:
+    maze_grid = load_maze_from_file(maze_file)
+    print(f"Solving maze from file: {maze_file}")
+    solve_maze_problem(maze_grid)
+    print()
