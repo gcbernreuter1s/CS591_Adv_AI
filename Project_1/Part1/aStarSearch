@@ -115,10 +115,20 @@ def load_maze(filename):
             maze.append(row)
     return maze, start, goal
 
+def visualize_solution(maze, path):
+    for i in range(len(maze)):
+        for j in range(len(maze[0])):
+            if (i, j) in path:
+                print('.', end='')
+            else:
+                print(maze[i][j], end='')
+        print()
+
 # Run A* search on each maze
 for maze_file in ['smallMaze.lay', 'mediumMaze.lay', 'bigMaze.lay', 'openMaze.lay']:
     maze, start, goal = load_maze(maze_file)
     path, path_cost, nodes_expanded, max_tree_depth, max_fringe_size = astar_search(maze, start, goal)
+    visualize_solution(maze, path)
     print(maze_file)
     print(f"Path Cost: {path_cost}")
     print(f"Nodes Expanded: {nodes_expanded}")
