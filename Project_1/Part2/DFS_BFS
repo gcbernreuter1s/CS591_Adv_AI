@@ -1,1 +1,144 @@
+# Load maze and find all goals in the maze
+
+def loadMazeWithGoals(filename):     #defines the function to load the maze from a .lay file 
+    file = open(filename, 'r')       #opens the specified file 
+    a = 0                            #initializes variables to track the row number (a)
+    maze = []                        #the maze as a 2D list 
+    start = []                       #Pacman's starting position 
+    goals = []                       #goal positions 
+
+
+    #following chunk of code reads a maze from a file and keeps track of where Pacman and the goals (marked as dots .) are located.
+    
+    for line in file:                #iterates through each line 
+        b = 0                        #column index
+        maze.append([])              #creates a new row in the maze (eventually become a 2D grid where each element of the list corresponds to a character in the maze)     
+        for element in line:         #iterates through each element in line
+            if element != '\n':      #ignore new line characters
+                maze[a].append(element)   
+                if element == 'P':    #when starting position (P) is found, the start list is updated 
+                    start = [a, b]  
+                if element == '.':    #when a goal (.) is found, its cordinates are added to goals list
+                    goals.append([a, b]) 
+            b += 1
+        a += 1
+    
+    file.close()  
+    return maze, start, goals 
+
+# displaying the maze for visualization(optional?)
+def printMaze(maze):
+    from IPython.display import display, Markdown
+    maze_str = '\n'.join(map(''.join, maze))
+    display(Markdown(f"```{maze_str}```"))
+
+maze, start, goals = loadMazeWithGoals('smallMaze.lay')
+printMaze(maze)
+
+#Helper Function to Find Neighbors
+# function finds all valid moves Pacman can make from its current position
+#and it returns a list of neighboring cells that are open (e.g  not walls) and haven’t been visited yet
+
+def neighborNodes(node, maze, visited):
+    directions = [            #defining of directions teh Pacman can move
+        (1, 0),   # down
+        (0, -1),  # left
+        (-1, 0),  # up
+        (0, 1)    # right
+    ]
+    
+    neighbors = []  # this list will store all valid neighboring nodes that Pacman can move to
+
+    #This loop iterates through each of the four possible directions 
+    #and calculates coordinates (newNode) of the neighboring cell by adding the direction to the current node's coordinates
+    for direction in directions:
+        newNode = [node[0] + direction[0], node[1] + direction[1]]
+        if (0 <= newNode[0] < len(maze) and 
+            0 <= newNode[1] < len(maze[0]) and 
+            newNode not in visited and 
+            maze[newNode[0]][newNode[1]] != '%'):
+            neighbors.append(newNode)
+    return neighbors
+
+#In Part 1, Pacman was only required to find a path from the startto  a single goal
+#In Part 2, the problem becomes more complex because there are multiple goals, and Pacman must "eat all dots"
+
+#Depth First Search for multiple goals
+def dfs_multiple_goals(filename):
+   
+    maze, start, all_goals = loadMazeWithGoals(filename)
+    
+    remaining_goals = all_goals.copy()  #holds a copy of all the goals that Pacman hasn't reached yet
+                                        #the search continues until remaining_goals is empty, meaning all goals have been visited
+    current_position = start
+    total_path = []                                      #initializing tracking variables
+    total_nodes_expanded = 0
+    total_max_depth = 0
+    total_fringe_size = 0
+    
+    #perform DFS for each goal
+    while remaining_goals:   #loop ensures that DFS is performed repeatedly, each time targeting the next goal
+        print(f"Current position: {current_position}, Remaining goals: {len(remaining_goals)}")  
+        finish = False   #flag to indicate whether the current goal has been reached
+        nodes = []     #tracking nodes expanded during this DFS run
+        path = []   # a list to store the path from Pacman's current position to the current goal
+        visited = [] #let us know which nodes have already been visited
+        frontier = [current_position]   #stack that stores the nodes to be explored, initialized with Pacman's current position
+        max_depth = 0
+        fringe = 0
+        current_goal = remaining_goals[0]
+
+        #main DFS loop
+        while (not finish and frontier):
+            # if goal state is reached, exit the loop
+            if frontier[-1] == current_goal:
+                path.append(frontier[-1])
+                max_depth = max(max_depth, len(path)-1)
+                finish = True
+                break
+            
+            node = frontier.pop()  #removes the current node from the stack 
+            nodes.append(node)     #keep track of all expanded nodes
+            path.append(node)      #adds the node to the path being taken towards the goal.
+            max_depth = max(max_depth, len(path)-1)  #updates if the current depth is greater than the previous
+            
+            if node not in visited:         #checks if the node has been visited, if no -  it adds it to the visited list
+                visited.append(node)
+            
+            neighbors = neighborNodes(node, maze, visited)  #DFS explores each node by looking at its neighbors, moving deeply down one path before backtracking to explore others
+            if neighbors:
+                for neighbor in neighbors:
+                    frontier.append(neighbor)
+                    fringe = max(fringe, len(frontier))  #tracking fringe size helps analyze fficiency and memory use.
+            else:                                              #if there are no neighbors to explore, DFS backtracks by removing nodes from the path
+                while len(neighborNodes(path[-1], maze, visited)) == 0:
+                    path.pop()
+        
+        # update the maze with the path found
+        for point in path:
+            maze[point[0]][point[1]] = '.'
+        total_path.extend(path)
+        
+        # current goal as reached
+        remaining_goals.remove(current_goal)
+        current_position = current_goal
+        
+        # update statistics
+        total_nodes_expanded += len(nodes)
+        total_max_depth = max(total_max_depth, max_depth)
+        total_fringe_size = max(total_fringe_size, fringe)
+    
+    # print final solution
+    print('Final Solution Path:')
+    printMaze(maze)
+    print('Total nodes expanded: %d' % total_nodes_expanded)
+    print('Maximum tree depth searched: %d' % total_max_depth)
+    print('Maximum size of fringe: %d' % total_fringe_size)
+
+# Run the DFS algorithm on the specified mazes for Part 2
+for mazefile in ['tinySearch.lay', 'smallSearch.lay', 'trickySearch.lay']:
+    print(f"Running DFS on {mazefile}...")
+    dfs_multiple_goals(mazefile)
+    print("\n\n")
+
 
