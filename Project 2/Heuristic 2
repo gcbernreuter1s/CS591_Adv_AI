@@ -1,1 +1,41 @@
+def offensive_heuristic_2(board, player):
+    """
+    Evaluate board state offensively for player.
+    :param board: 2D array representing the game state.
+    :param player: Current player ('A' or 'B').
+    :return: Heuristic value.
+    """
+    opponent = 'B' if player == 'A' else 'A'
+    sum_row_indices = sum(i for i, row in enumerate(board) for j, piece in enumerate(row) if piece == player)
+    capture_opportunities = sum(
+        1 for i, row in enumerate(board[:-1]) for j, piece in enumerate(row)
+        if piece == player and board[i+1][j-1:j+2].count(opponent) > 0
+    )
+    remaining_pieces_ratio = (sum(row.count(player) for row in board) /
+                              max(1, sum(row.count(opponent) for row in board)))
+    
+    return 1 * sum_row_indices + 5 * capture_opportunities + 2 * remaining_pieces_ratio
+
+
+def defensive_heuristic_2(board, player):
+    """
+    Evaluate board state defensively for player.
+    :param board: 2D array representing the game state.
+    :param player: Current player ('A' or 'B').
+    :return: Heuristic value.
+    """
+    opponent = 'B' if player == 'A' else 'A'
+    blockade_strength = sum(
+        1 for i, row in enumerate(board[:-1]) for j, piece in enumerate(row)
+        if piece == player and board[i+1][j:j+3].count(opponent) > 0
+    )
+    exposed_workers = sum(
+        1 for i, row in enumerate(board[:-1]) for j, piece in enumerate(row)
+        if piece == player and board[i+1][j-1:j+2].count(opponent) > 0
+    )
+    protected_rows_occupation = sum(
+        sum(1 for cell in row if cell == player) for row in board[:3]
+    )
+    
+    return 3 * blockade_strength - 2 * exposed_workers + 1 * protected_rows_occupation
 
