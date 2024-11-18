@@ -1,1 +1,74 @@
 
+class AlphaBetaAgent:
+    def __init__(self, board, player, depth, evaluation_function):
+        self.board = Board(board)
+        self.player = player
+        self.depth = depth
+        self.evaluation_function = evaluation_function
+
+    def alpha_beta_decision(self):
+        def max_value(board, alpha, beta, depth):
+            if depth == 0 or board.is_terminal():
+                return self.evaluation_function(board, self.player), board
+            v = float('-inf')
+            best_board = None
+            for successor in board.get_successors(self.player):
+                min_val, _ = min_value(successor, alpha, beta, depth - 1)
+                if min_val > v:
+                    v = min_val
+                    best_board = successor
+                if v >= beta:
+                    return v, best_board
+                alpha = max(alpha, v)
+            return v, best_board
+
+        def min_value(board, alpha, beta, depth):
+            if depth == 0 or board.is_terminal():
+                return self.evaluation_function(board, self.player), board
+            v = float('inf')
+            best_board = None
+            for successor in board.get_successors(3 - self.player):
+                max_val, _ = max_value(successor, alpha, beta, depth - 1)
+                if max_val < v:
+                    v = max_val
+                    best_board = successor
+                if v <= alpha:
+                    return v, best_board
+                beta = min(beta, v)
+            return v, best_board
+
+        _, best_board = max_value(self.board, float('-inf'), float('inf'), self.depth)
+        return best_board, self.board.get_nodes_expanded(), self.board.get_pieces_left()
+
+# Example heuristic function
+def heuristic(board, player):
+    score = 0
+    for i in range(8):
+        for j in range(8):
+            if board[i][j] == player:
+                # Reward pieces closer to the opponent's side
+                if player == 1:
+                    score += (7 - i)  # Black pieces moving downwards
+                else:
+                    score += i  # White pieces moving upwards
+            elif board[i][j] == 3 - player:
+                # Penalize opponent's pieces closer to the player's side
+                if player == 1:
+                    score -= i  # Opponent's white pieces moving upwards
+                else:
+                    score -= (7 - i)  # Opponent's black pieces moving downwards
+    return score
+
+# Usage in BreakthroughGame
+def ai_move_alphabeta(self, function_type):
+    board, nodes, piece = AlphaBetaAgent(self.boardmatrix, self.turn, 5, heuristic).alpha_beta_decision()
+    self.boardmatrix = board.getMatrix()
+    if self.turn == 1:
+        self.total_nodes_1 += nodes
+        self.turn = 2
+    elif self.turn == 2:
+        self.total_nodes_2 += nodes
+        self.turn = 1
+    self.eat_piece = 16 - piece
+    if self.isgoalstate():
+        self.status = 3
