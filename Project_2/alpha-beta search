@@ -1,32 +1,21 @@
-import random
+
 import copy
+import random
 
-# Define the board size
 BOARD_SIZE = 8
+PLAYER_1 = 1
+PLAYER_2 = 2
+EMPTY = 0
 
-# Define the initial board state
-INITIAL_BOARD = [
-    [1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [2, 2, 2, 2, 2, 2, 2, 2],
-    [2, 2, 2, 2, 2, 2, 2, 2]
-]
-
-# Define the heuristics
 def defensive_heuristic_1(board, player):
     own_pieces = sum(row.count(player) for row in board)
     return 2 * own_pieces + random.random()
 
 def offensive_heuristic_1(board, player):
-    opponent = 3 - player
+    opponent = PLAYER_2 if player == PLAYER_1 else PLAYER_1
     opponent_pieces = sum(row.count(opponent) for row in board)
     return 2 * (30 - opponent_pieces) + random.random()
 
-# Define the AlphaBetaAgent class
 class AlphaBetaAgent:
     def __init__(self, board, player, depth, heuristic):
         self.board = board
@@ -37,12 +26,12 @@ class AlphaBetaAgent:
 
     def get_possible_moves(self, board, player):
         moves = []
-        direction = 1 if player == 1 else -1
+        direction = 1 if player == PLAYER_1 else -1
         for x in range(BOARD_SIZE):
             for y in range(BOARD_SIZE):
                 if board[x][y] == player:
                     if x + direction < BOARD_SIZE and x + direction >= 0:
-                        if board[x + direction][y] == 0:
+                        if board[x + direction][y] == EMPTY:
                             moves.append((x, y, x + direction, y))
                         if y - 1 >= 0 and board[x + direction][y - 1] != player:
                             moves.append((x, y, x + direction, y - 1))
@@ -54,7 +43,7 @@ class AlphaBetaAgent:
         new_board = copy.deepcopy(board)
         from_x, from_y, to_x, to_y = move
         new_board[to_x][to_y] = new_board[from_x][from_y]
-        new_board[from_x][from_y] = 0
+        new_board[from_x][from_y] = EMPTY
         return new_board
 
     def is_terminal_state(self, board):
@@ -99,26 +88,3 @@ class AlphaBetaAgent:
     def get_best_move(self):
         _, best_move = self.alpha_beta_search(self.board, self.depth, float('-inf'), float('inf'), True)
         return best_move
-
-# Example usage
-def main():
-    board = copy.deepcopy(INITIAL_BOARD)
-    player = 1
-    depth = 3
-    heuristic = offensive_heuristic_1
-
-    while not AlphaBetaAgent(board, player, depth, heuristic).is_terminal_state(board):
-        agent = AlphaBetaAgent(board, player, depth, heuristic)
-        move = agent.get_best_move()
-        if move:
-            board = agent.apply_move(board, move)
-            player = 3 - player
-        else:
-            break
-
-    print("Final board state:")
-    for row in board:
-        print(row)
-
-if __name__ == "__main__":
-    main()
