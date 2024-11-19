@@ -1,74 +1,124 @@
+import random
+import copy
 
+# Define the board size
+BOARD_SIZE = 8
+
+# Define the initial board state
+INITIAL_BOARD = [
+    [1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [2, 2, 2, 2, 2, 2, 2, 2],
+    [2, 2, 2, 2, 2, 2, 2, 2]
+]
+
+# Define the heuristics
+def defensive_heuristic_1(board, player):
+    own_pieces = sum(row.count(player) for row in board)
+    return 2 * own_pieces + random.random()
+
+def offensive_heuristic_1(board, player):
+    opponent = 3 - player
+    opponent_pieces = sum(row.count(opponent) for row in board)
+    return 2 * (30 - opponent_pieces) + random.random()
+
+# Define the AlphaBetaAgent class
 class AlphaBetaAgent:
-    def __init__(self, board, player, depth, evaluation_function):
-        self.board = Board(board)
+    def __init__(self, board, player, depth, heuristic):
+        self.board = board
         self.player = player
         self.depth = depth
-        self.evaluation_function = evaluation_function
+        self.heuristic = heuristic
+        self.total_nodes = 0
 
-    def alpha_beta_decision(self):
-        def max_value(board, alpha, beta, depth):
-            if depth == 0 or board.is_terminal():
-                return self.evaluation_function(board, self.player), board
-            v = float('-inf')
-            best_board = None
-            for successor in board.get_successors(self.player):
-                min_val, _ = min_value(successor, alpha, beta, depth - 1)
-                if min_val > v:
-                    v = min_val
-                    best_board = successor
-                if v >= beta:
-                    return v, best_board
-                alpha = max(alpha, v)
-            return v, best_board
+    def get_possible_moves(self, board, player):
+        moves = []
+        direction = 1 if player == 1 else -1
+        for x in range(BOARD_SIZE):
+            for y in range(BOARD_SIZE):
+                if board[x][y] == player:
+                    if x + direction < BOARD_SIZE and x + direction >= 0:
+                        if board[x + direction][y] == 0:
+                            moves.append((x, y, x + direction, y))
+                        if y - 1 >= 0 and board[x + direction][y - 1] != player:
+                            moves.append((x, y, x + direction, y - 1))
+                        if y + 1 < BOARD_SIZE and board[x + direction][y + 1] != player:
+                            moves.append((x, y, x + direction, y + 1))
+        return moves
 
-        def min_value(board, alpha, beta, depth):
-            if depth == 0 or board.is_terminal():
-                return self.evaluation_function(board, self.player), board
-            v = float('inf')
-            best_board = None
-            for successor in board.get_successors(3 - self.player):
-                max_val, _ = max_value(successor, alpha, beta, depth - 1)
-                if max_val < v:
-                    v = max_val
-                    best_board = successor
-                if v <= alpha:
-                    return v, best_board
-                beta = min(beta, v)
-            return v, best_board
+    def apply_move(self, board, move):
+        new_board = copy.deepcopy(board)
+        from_x, from_y, to_x, to_y = move
+        new_board[to_x][to_y] = new_board[from_x][from_y]
+        new_board[from_x][from_y] = 0
+        return new_board
 
-        _, best_board = max_value(self.board, float('-inf'), float('inf'), self.depth)
-        return best_board, self.board.get_nodes_expanded(), self.board.get_pieces_left()
+    def is_terminal_state(self, board):
+        if 1 in board[BOARD_SIZE - 1] or 2 in board[0]:
+            return True
+        if sum(row.count(1) for row in board) == 0 or sum(row.count(2) for row in board) == 0:
+            return True
+        return False
 
-# Example heuristic function
-def heuristic(board, player):
-    score = 0
-    for i in range(8):
-        for j in range(8):
-            if board[i][j] == player:
-                # Reward pieces closer to the opponent's side
-                if player == 1:
-                    score += (7 - i)  # Black pieces moving downwards
-                else:
-                    score += i  # White pieces moving upwards
-            elif board[i][j] == 3 - player:
-                # Penalize opponent's pieces closer to the player's side
-                if player == 1:
-                    score -= i  # Opponent's white pieces moving upwards
-                else:
-                    score -= (7 - i)  # Opponent's black pieces moving downwards
-    return score
+    def alpha_beta_search(self, board, depth, alpha, beta, maximizing_player):
+        self.total_nodes += 1
+        if depth == 0 or self.is_terminal_state(board):
+            return self.heuristic(board, self.player), None
 
-# Usage in BreakthroughGame
-def ai_move_alphabeta(self, function_type):
-    board, nodes, piece = AlphaBetaAgent(self.boardmatrix, self.turn, 5, heuristic).alpha_beta_decision()
-    self.boardmatrix = board.getMatrix()
-    if self.turn == 1:
-        self.total_nodes_1 += nodes
-        self.turn = 2
-    elif self.turn == 2:
-        self.total_nodes_2 += nodes
-        self.turn = 1
-    self.eat_piece = 16 - piece
-    if self.isgoalstate():
-        self.status = 3
+        if maximizing_player:
+            max_eval = float('-inf')
+            best_move = None
+            for move in self.get_possible_moves(board, self.player):
+                new_board = self.apply_move(board, move)
+                eval, _ = self.alpha_beta_search(new_board, depth - 1, alpha, beta, False)
+                if eval > max_eval:
+                    max_eval = eval
+                    best_move = move
+                alpha = max(alpha, eval)
+                if beta <= alpha:
+                    break
+            return max_eval, best_move
+        else:
+            min_eval = float('inf')
+            best_move = None
+            for move in self.get_possible_moves(board, 3 - self.player):
+                new_board = self.apply_move(board, move)
+                eval, _ = self.alpha_beta_search(new_board, depth - 1, alpha, beta, True)
+                if eval < min_eval:
+                    min_eval = eval
+                    best_move = move
+                beta = min(beta, eval)
+                if beta <= alpha:
+                    break
+            return min_eval, best_move
+
+    def get_best_move(self):
+        _, best_move = self.alpha_beta_search(self.board, self.depth, float('-inf'), float('inf'), True)
+        return best_move
+
+# Example usage
+def main():
+    board = copy.deepcopy(INITIAL_BOARD)
+    player = 1
+    depth = 3
+    heuristic = offensive_heuristic_1
+
+    while not AlphaBetaAgent(board, player, depth, heuristic).is_terminal_state(board):
+        agent = AlphaBetaAgent(board, player, depth, heuristic)
+        move = agent.get_best_move()
+        if move:
+            board = agent.apply_move(board, move)
+            player = 3 - player
+        else:
+            break
+
+    print("Final board state:")
+    for row in board:
+        print(row)
+
+if __name__ == "__main__":
+    main()
