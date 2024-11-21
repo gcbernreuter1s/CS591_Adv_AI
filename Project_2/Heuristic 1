@@ -1,1 +1,158 @@
+#Implement Defensive Heuristic 1 and Offensive Heuristic 1
 
+import random
+
+def switch_turn(current_turn):
+    return 2 if current_turn == 1 else 1
+
+def compute_new_position(position, direction, turn):
+    move_offsets = {
+        1: (-1, -1),  # left
+        2: (-1, 0),   # middle
+        3: (-1, 1),   # right
+    } if turn == 2 else {
+        1: (1, -1),   # left
+        2: (1, 0),    # middle
+        3: (1, 1),    # right
+    }
+    return position[0] + move_offsets[direction][0], position[1] + move_offsets[direction][1]
+
+# Heuristic functions
+def defensive_heuristic_1(state):
+    """
+    Defensive Heuristic 1: Prioritize retaining as many of your pieces as possible.
+    """
+    if state.turn == 1:  # Player 1's turn
+        return 2 * len(state.black_positions) + random.random()
+    else:  # Player 2's turn
+        return 2 * len(state.white_positions) + random.random()
+
+def offensive_heuristic_1(state):
+    """
+    Offensive Heuristic 1: Prioritize reducing the opponent's pieces.
+    """
+    if state.turn == 1:  # Player 1's turn
+        return 2 * (30 - len(state.white_positions)) + random.random()
+    else:  # Player 2's turn
+        return 2 * (30 - len(state.black_positions)) + random.random()
+
+class GameState:
+    def __init__(self, board=None, black_positions=None, white_positions=None, turn=1, board_width=8, board_height=8, function_type=0):
+        self.board_width = board_width
+        self.board_height = board_height
+        self.turn = turn
+        self.function_type = function_type
+
+        self.black_positions = black_positions or []
+        self.white_positions = white_positions or []
+
+        if board:
+            self._initialize_positions_from_board(board)
+
+    def _initialize_positions_from_board(self, board):
+        for row in range(self.board_height):
+            for col in range(self.board_width):
+                if board[row][col] == 1:
+                    self.black_positions.append((row, col))
+                elif board[row][col] == 2:
+                    self.white_positions.append((row, col))
+
+    def transfer(self, action):
+        new_black_positions = list(self.black_positions)
+        new_white_positions = list(self.white_positions)
+
+        if action.player_turn == 1:
+            self._move_piece(new_black_positions, new_white_positions, action, 1)
+        else:
+            self._move_piece(new_white_positions, new_black_positions, action, 2)
+
+        return GameState(
+            black_positions=new_black_positions,
+            white_positions=new_white_positions,
+            turn=switch_turn(action.player_turn),
+            function_type=self.function_type,
+            board_width=self.board_width,
+            board_height=self.board_height
+        )
+
+    def _move_piece(self, own_positions, opponent_positions, action, player_turn):
+        if action.position in own_positions:
+            index = own_positions.index(action.position)
+            new_position = compute_new_position(action.position, action.direction, player_turn)
+            own_positions[index] = new_position
+            if new_position in opponent_positions:
+                opponent_positions.remove(new_position)
+
+    def available_actions(self):
+        actions = []
+        positions = self.black_positions if self.turn == 1 else self.white_positions
+
+        for position in sorted(positions, key=lambda p: (p[0], -p[1]) if self.turn == 1 else (p[0], p[1])):
+            self._generate_actions_for_position(position, actions)
+
+        return actions
+
+    def _generate_actions_for_position(self, position, actions):
+        directions = [1, 2, 3]  # Left, middle, right
+        for direction in directions:
+            new_position = compute_new_position(position, direction, self.turn)
+            if self.turn == 1 and new_position not in self.black_positions and 0 <= new_position[1] < self.board_width:
+                actions.append(Action(position, direction, 1))
+            elif self.turn == 2 and new_position not in self.white_positions and 0 <= new_position[1] < self.board_width:
+                actions.append(Action(position, direction, 2))
+
+    def get_board_matrix(self):
+        matrix = [[0 for _ in range(self.board_width)] for _ in range(self.board_height)]
+        for item in self.black_positions:
+            matrix[item[0]][item[1]] = 1
+        for item in self.white_positions:
+            matrix[item[0]][item[1]] = 2
+        return matrix
+
+    def utility(self):
+        """
+        Use the appropriate heuristic function based on the current player's turn.
+        """
+        if self.function_type == 1:
+            return defensive_heuristic_1(self)
+        elif self.function_type == 2:
+            return offensive_heuristic_1(self)
+        else:
+            return len(self.black_positions) - len(self.white_positions)
+
+    def is_goal_state(self):
+        if 0 in [pos[0] for pos in self.white_positions] or len(self.black_positions) == 0:
+            return 2  # White wins
+        if self.board_height - 1 in [pos[0] for pos in self.black_positions] or len(self.white_positions) == 0:
+            return 1  # Black wins
+        return 0  # No winner yet
+
+class Action:
+    def __init__(self, position, direction, player_turn):
+        self.position = position
+        self.direction = direction
+        self.player_turn = player_turn
+
+    def get_description(self):
+        return f"Player {self.player_turn} moves from {self.position} in direction {self.direction}"
+
+# Example integration and testing
+board = [
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0]
+]
+
+
+# Testing Defensive Heuristic 1
+state = GameState(board=board, turn=1, function_type=1)
+print(f"Defensive Heuristic 1 Value: {state.utility()}")
+
+# Testing Offensive Heuristic 1
+state = GameState(board=board, turn=2, function_type=2)
+print(f"Offensive Heuristic 1 Value: {state.utility()}")
